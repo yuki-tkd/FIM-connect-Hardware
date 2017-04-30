@@ -8,11 +8,18 @@
 #define SDA 4
 #define SCL 5
 
-#define DEVICEID 11
-
 ESP8266WiFiMulti WiFiMulti;
 
 bool isSent = false;
+bool isPressed = false;
+
+typedef enum State {
+  normal,
+  active,
+  fall  
+};
+
+State state;
 
 void setup() {
   Wire.begin(SDA,SCL);
@@ -32,38 +39,56 @@ void loop() {
     if(x == -1) {
       continue;
     }
-    Serial.print("Sensor");
-    Serial.print(i);
-    Serial.print(":= ");
-    Serial.println(x);
+//    Serial.print("Sensor");
+//    Serial.print(i);
+//    Serial.print(":= ");
+//    Serial.println(x);
 
-    if(x < 50 && !isSent) {
-        post();
-        isSent = true;
-    } else {
-         isSent = false;
+    if(x < 50 && !isPressed) {
+      Serial.print("Sensor");
+      Serial.print(i);
+      Serial.print(":= ");
+      Serial.println("Active");
+      isPressed = true;
+      state = active;
+      isSent = false;
+    } else if(x > 50 && isPressed) {
+      Serial.print("Sensor");
+      Serial.print(i);
+      Serial.print(":= ");
+      Serial.println("Normal");
+      isPressed = false;
+      state = normal;
+      isSent = false;
+    }
 
+    if(!isSent) {
+      if(isPressed) {
+        activate(i);
+      } else {
+        normalize(i);
       }
+      isSent = true;
+    }
   }
   delay(100);
 }
 
 int readModule(byte addr) {
   Wire.requestFrom(addr, 1);
-  if(Wire.available() == 1) {
+  if(Wire.available() > 0) {
     return Wire.read();
   }
   return -1;
 }
 
-
-void post() {
+void activate(int deviceId) {
   Serial.println("Posting!!!!");
   if((WiFiMulti.run() == WL_CONNECTED)) {
     HTTPClient http;
     Serial.print("[HTTP] begin...\n");
     String query = "http://133.16.123.101/api/sensor/";
-    query += DEVICEID;
+    query += deviceId;
     query += "/Active";
     http.begin(query); //HTTP
     Serial.print("[HTTP] GET...\n");
@@ -82,13 +107,13 @@ void post() {
 }
 
 
-void post2() {
-  Serial.println("Posting!!!!");
+void normalize(int deviceId) {
+  Serial.println("Normal!!!!");
   if((WiFiMulti.run() == WL_CONNECTED)) {
     HTTPClient http;
     Serial.print("[HTTP] begin...\n");
     String query = "http://133.16.123.101/api/sensor/";
-    query += DEVICEID;
+    query += deviceId;
     query += "/Normal";
     http.begin(query); //HTTP
     Serial.print("[HTTP] GET...\n");
