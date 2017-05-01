@@ -8,6 +8,8 @@
 #define SDA 4
 #define SCL 5
 
+#define TH 65
+
 ESP8266WiFiMulti WiFiMulti;
 
 bool isSent = false;
@@ -29,7 +31,6 @@ void setup() {
     Serial.flush();
     delay(1000);
   }
-
   WiFiMulti.addAP(SSID, PASSWORD);  
 }
 
@@ -39,12 +40,12 @@ void loop() {
     if(x == -1) {
       continue;
     }
-//    Serial.print("Sensor");
-//    Serial.print(i);
-//    Serial.print(":= ");
-//    Serial.println(x);
-
-    if(x < 50 && !isPressed) {
+    Serial.print("Sensor");
+    Serial.print(i);
+    Serial.print(":= ");
+    Serial.println(x);
+    
+    if(0 < x && x < TH && !isPressed) {
       Serial.print("Sensor");
       Serial.print(i);
       Serial.print(":= ");
@@ -52,7 +53,12 @@ void loop() {
       isPressed = true;
       state = active;
       isSent = false;
-    } else if(x > 50 && isPressed) {
+      if(isLEDModuleConnected(13)) {
+        Wire.beginTransmission(13); // transmit to device #8
+        Wire.write(1);              // sends one byte
+        Wire.endTransmission();    // stop transmitting
+      }
+    } else if(x > TH && isPressed) {
       Serial.print("Sensor");
       Serial.print(i);
       Serial.print(":= ");
@@ -60,6 +66,11 @@ void loop() {
       isPressed = false;
       state = normal;
       isSent = false;
+      if(isLEDModuleConnected(13)) {
+        Wire.beginTransmission(13); // transmit to device #8
+        Wire.write(0);              // sends one byte
+        Wire.endTransmission();    // stop transmitting
+      }
     }
 
     if(!isSent) {
@@ -72,6 +83,15 @@ void loop() {
     }
   }
   delay(100);
+}
+
+bool isLEDModuleConnected(int addr) {
+  Wire.requestFrom(addr, 1);
+  if(Wire.available() > 0) {
+    Wire.read();
+    return true;
+  }
+  return false;
 }
 
 int readModule(byte addr) {
