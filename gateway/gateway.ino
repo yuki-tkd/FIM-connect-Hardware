@@ -8,25 +8,17 @@
 #define SDA 4
 #define SCL 5
 
-#define TH 65
+#define GATEWAYID 1
+#define TH 45
 
 ESP8266WiFiMulti WiFiMulti;
 
-bool isSent = false;
 bool isPressed = false;
-
-typedef enum State {
-  normal,
-  active,
-  fall  
-};
-
-State state;
 
 void setup() {
   Wire.begin(SDA,SCL);
   Serial.begin(115200);
-  for(uint8_t t = 2; t > 0; t--) {
+  for(uint8_t t = 4; t > 0; t--) {
     Serial.printf("[SETUP] WAIT %d...\n", t);
     Serial.flush();
     delay(1000);
@@ -48,38 +40,24 @@ void loop() {
     if(0 < x && x < TH && !isPressed) {
       Serial.print("Sensor");
       Serial.print(i);
-      Serial.print(":= ");
-      Serial.println("Active");
+      Serial.println(":= Active");
       isPressed = true;
-      state = active;
-      isSent = false;
       if(isLEDModuleConnected(13)) {
         Wire.beginTransmission(13); // transmit to device #8
         Wire.write(1);              // sends one byte
         Wire.endTransmission();    // stop transmitting
       }
+      activate(i);
     } else if(x > TH && isPressed) {
       Serial.print("Sensor");
       Serial.print(i);
-      Serial.print(":= ");
-      Serial.println("Normal");
+      Serial.println(":= Normal");
       isPressed = false;
-      state = normal;
-      isSent = false;
       if(isLEDModuleConnected(13)) {
         Wire.beginTransmission(13); // transmit to device #8
         Wire.write(0);              // sends one byte
         Wire.endTransmission();    // stop transmitting
       }
-    }
-
-    if(!isSent) {
-      if(isPressed) {
-        activate(i);
-      } else {
-        normalize(i);
-      }
-      isSent = true;
     }
   }
   delay(100);
@@ -108,8 +86,12 @@ void activate(int deviceId) {
     HTTPClient http;
     Serial.print("[HTTP] begin...\n");
     String query = "http://133.16.123.101/api/sensor/";
+    query += GATEWAYID;
+    query += '/';
     query += deviceId;
-    query += "/Active";
+    query += '/';
+    query += "Normal";
+    query += "/1";
     http.begin(query); //HTTP
     Serial.print("[HTTP] GET...\n");
     int httpCode = http.GET();
@@ -125,29 +107,3 @@ void activate(int deviceId) {
     http.end();
   }
 }
-
-
-void normalize(int deviceId) {
-  Serial.println("Normal!!!!");
-  if((WiFiMulti.run() == WL_CONNECTED)) {
-    HTTPClient http;
-    Serial.print("[HTTP] begin...\n");
-    String query = "http://133.16.123.101/api/sensor/";
-    query += deviceId;
-    query += "/Normal";
-    http.begin(query); //HTTP
-    Serial.print("[HTTP] GET...\n");
-    int httpCode = http.GET();
-    if(httpCode > 0) {
-      Serial.printf("[HTTP] GET... code: %d\n", httpCode);
-      if(httpCode == HTTP_CODE_OK) {
-        String payload = http.getString();
-        Serial.println(payload);
-      }
-    } else {
-      Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
-    }
-    http.end();
-  }
-}
-

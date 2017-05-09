@@ -1,3 +1,4 @@
+#include <MsTimer2.h>
 #include <Wire.h>
 #include <Adafruit_NeoPixel.h>
 #ifdef __AVR__A
@@ -40,10 +41,19 @@ void receiveEvent(int d) {
         pixels.setPixelColor(i, pixels.Color(255,140,0));
         pixels.setBrightness(200);
         pixels.show();
+        MsTimer2::stop();
+        MsTimer2::set(10000, clearLED);
+        MsTimer2::start();
       } 
     } else {
-      pixels.clear();
-      pixels.show();
+      MsTimer2::set(10000, clearLED);
+      MsTimer2::start();
     }
   }
+}
+
+void clearLED() {
+  pixels.clear();
+  pixels.show();
+  MsTimer2::stop();
 }
